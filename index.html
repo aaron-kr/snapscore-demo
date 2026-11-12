@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SnapScore Desk</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f766e'/%3E%3Ccircle cx='11' cy='11' r='4' fill='white'/%3E%3Ccircle cx='21' cy='11' r='4' fill='none' stroke='white' stroke-width='2'/%3E%3Ccircle cx='11' cy='21' r='4' fill='none' stroke='white' stroke-width='2'/%3E%3Ccircle cx='21' cy='21' r='4' fill='white'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="desk.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true"></span>SnapScore <b>Desk</b></div>
+  <input id="title" class="title" aria-label="Batch name" spellcheck="false">
+  <div class="spacer"></div>
+  <label class="recent">
+    <span class="sr">Recent batches</span>
+    <select id="recent" aria-label="Open a recent batch"></select>
+  </label>
+  <button id="newBatch" class="btn ghost" title="Start a new, empty batch">New batch</button>
+</header>
+
+<div class="layout">
+  <aside class="side">
+    <section>
+      <h2><span class="step">1</span>Answer key</h2>
+      <select id="keySel" aria-label="Answer key"></select>
+      <div id="keyInfo" class="keyinfo"></div>
+      <button id="addKey" class="btn wide">+ Add a key</button>
+    </section>
+
+    <section>
+      <h2><span class="step">2</span>Curve <span class="muted">(optional)</span></h2>
+      <label class="switch"><input type="checkbox" id="curveOn"><span>Show curved scores</span></label>
+      <div id="curveBox" class="curvebox" hidden>
+        <label>curved = <input id="curveA" type="number" step="0.1" min="0" max="100"> + ½ × raw %</label>
+        <p id="curveHint" class="hint"></p>
+      </div>
+    </section>
+
+    <section>
+      <details id="rosterBox">
+        <summary><h2><span class="step">3</span>Class roster <span class="muted">(optional)</span></h2></summary>
+        <p class="hint">Paste lines of <i>No.</i> and <i>student ID</i> (and name). Scores are then listed and exported in roster order, and missing students show up.</p>
+        <textarea id="roster" rows="7" placeholder="01	202600001	Hong Gildong&#10;02	202600002"></textarea>
+      </details>
+    </section>
+
+    <section class="keys-help">
+      <h2>Keyboard</h2>
+      <dl>
+        <dt>← →  Space</dt><dd>previous / next sheet</dd>
+        <dt>Esc  Enter</dt><dd>close the sheet</dd>
+        <dt>1 2 …</dt><dd>switch version</dd>
+        <dt>Z</dt><dd>zoom</dd>
+      </dl>
+      <p class="hint">Everything runs on this computer. Nothing is uploaded.</p>
+    </section>
+  </aside>
+
+  <main class="main">
+    <div id="drop" class="drop" tabindex="0">
+      <div class="drop-inner">
+        <svg class="drop-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 31V9m0 0-8 8m8-8 8 8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 29v8a3 3 0 0 0 3 3h26a3 3 0 0 0 3-3v-8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+        <div>
+          <p class="drop-title">Drop answer sheets here</p>
+          <p class="drop-sub">Photos or scans (JPG, PNG), PDFs, a .zip, or a whole folder</p>
+        </div>
+        <div class="drop-actions">
+          <button id="pickFiles" class="btn">Choose files</button>
+          <button id="pickFolder" class="btn">Choose folder</button>
+          <input id="files" type="file" multiple accept=".jpg,.jpeg,.png,.tif,.tiff,.bmp,.webp,.pdf,.zip" hidden>
+          <input id="folder" type="file" webkitdirectory hidden>
+        </div>
+        <form id="pathForm" class="pathform">
+          <input id="path" placeholder="…or paste a folder or file path, e.g. C:\Scans\AC-ch12" aria-label="Folder or file path" spellcheck="false">
+          <button class="btn">Add</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="bar" class="bar" hidden>
+      <div id="counts" class="counts"></div>
+      <div class="spacer"></div>
+      <button id="grade" class="btn primary">Grade</button>
+      <button id="copy" class="btn" title="Copy ID, version, score and curved score to paste into a spreadsheet">Copy scores</button>
+      <a id="csv" class="btn" download>Export CSV</a>
+      <a id="zip" class="btn" download title="Every marked sheet, named by student, plus scores.csv">Marked sheets (.zip)</a>
+      <button id="openFolder" class="btn ghost" title="Open the folder of marked sheets">Open folder</button>
+    </div>
+
+    <div id="stats" class="stats" hidden></div>
+
+    <div id="listWrap" class="listwrap" hidden>
+      <div class="lhead" role="row">
+        <button data-sort="n" class="c-n">#</button>
+        <span class="c-strip">Sheet</span>
+        <button data-sort="name" class="c-file">File</button>
+        <button data-sort="sid" class="c-id">Student ID</button>
+        <button data-sort="correct" class="c-score">Score</button>
+        <button data-sort="percent" class="c-pct">%</button>
+        <button data-sort="curved" class="c-cur">Curved</button>
+      </div>
+      <div id="list" role="list"></div>
+    </div>
+
+    <div id="empty" class="empty">
+      <p><b>How it works</b></p>
+      <ol>
+        <li>Pick an answer key on the left (or add one: paste it, drop a CSV, or a Google Sheets link).</li>
+        <li>Drop the scans here. They are listed at once and graded automatically.</li>
+        <li>Click any row to see the marked sheet. Fix anything unclear there.</li>
+        <li>Copy the scores into your gradebook, or download the marked sheets to send to students.</li>
+      </ol>
+    </div>
+  </main>
+</div>
+
+<!-- lightbox -->
+<div id="lb" class="lb" hidden role="dialog" aria-modal="true" aria-label="Answer sheet">
+  <div class="lb-stage" id="lbStage">
+    <button class="lb-nav prev" id="lbPrev" aria-label="Previous sheet">‹</button>
+    <div class="lb-img" id="lbImgWrap"><img id="lbImg" alt=""></div>
+    <button class="lb-nav next" id="lbNext" aria-label="Next sheet">›</button>
+  </div>
+  <aside class="lb-side" id="lbSide">
+    <div class="lb-top">
+      <span id="lbPos" class="muted"></span>
+      <div class="spacer"></div>
+      <button class="iconbtn" id="lbZoom" title="Zoom (Z)" aria-label="Zoom">⤢</button>
+      <button class="iconbtn" id="lbClose" title="Close (Esc)" aria-label="Close">✕</button>
+    </div>
+    <div id="lbBody"></div>
+  </aside>
+</div>
+
+<!-- add key -->
+<dialog id="keyDlg" class="dlg">
+  <form method="dialog" id="keyForm">
+    <h2>Add an answer key</h2>
+    <label>Name <input id="kName" required placeholder="e.g. AC Ch.13 test"></label>
+    <div class="row2">
+      <label>Answer sheet
+        <select id="kLayout"></select>
+      </label>
+      <label>Points per question <input id="kPoints" type="number" min="0" step="0.5" value="1"></label>
+    </div>
+    <label>Key <span class="muted">— paste it, drop a CSV file here, or paste a Google Sheets link</span>
+      <textarea id="kText" rows="6" placeholder="A=ABCDE ABCDE ABCDE ABCDE&#10;B=EDCBA EDCBA EDCBA EDCBA"></textarea>
+    </label>
+    <div id="kPreview" class="kpreview"></div>
+    <div class="dlg-actions">
+      <button value="cancel" class="btn ghost" formnovalidate>Cancel</button>
+      <button id="kSave" value="save" class="btn primary">Save key</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="demo.js"></script>
+<script src="desk.js"></script>
+</body>
+</html>
